@@ -581,10 +581,10 @@ Interpret prompts, choose the next step, retrieve context, summarize results, dr
 
 **Live handoff**
 
-On the final slide, click **Launch live demo** to open the dashboard at `http://127.0.0.1:5173`.
-
-If you want to launch it from Terminal, copy and run:
+On the final slide, copy and run the dev-server command:
 
 ```bash
-open http://127.0.0.1:5173
+npm run dev
 ```
+
+After Vite starts, open the local URL it prints in the terminal.
