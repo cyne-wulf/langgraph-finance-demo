@@ -578,3 +578,7 @@ Calculations, compliance-sensitive rules, recordkeeping, and anything you need t
 **What should AI do?**
 
 Interpret prompts, choose the next step, retrieve context, summarize results, draft memos, and explain structured outputs in human language.
+
+**Live handoff**
+
+On the final slide, click **Launch live demo** to open the dashboard at `http://127.0.0.1:5173`.

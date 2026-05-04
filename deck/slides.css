@@ -1455,6 +1455,38 @@ code {
   margin-top: auto;
 }
 
+.demo-link {
+  align-items: center;
+  background: #146c5f;
+  border-radius: 8px;
+  box-shadow: 0 18px 48px rgba(20, 108, 95, 0.22);
+  color: white;
+  display: inline-flex;
+  gap: 24px;
+  margin-top: 10px;
+  padding: 20px 28px;
+  text-decoration: none;
+  width: fit-content;
+}
+
+.demo-link span,
+.demo-link strong {
+  display: block;
+}
+
+.demo-link span {
+  font-size: clamp(24px, 2.2vw, 36px);
+  font-weight: 900;
+}
+
+.demo-link strong {
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  border-radius: 6px;
+  font-size: clamp(16px, 1.35vw, 24px);
+  padding: 10px 12px;
+}
+
 .controls {
   align-items: center;
   bottom: 22px;
@@ -1700,6 +1732,17 @@ code {
   .clean-list,
   .takeaways {
     font-size: 22px;
+  }
+
+  .demo-link {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 10px;
+    width: 100%;
+  }
+
+  .demo-link strong {
+    overflow-wrap: anywhere;
   }
 
   .teach-slide h2 {
