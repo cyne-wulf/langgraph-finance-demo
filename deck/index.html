@@ -1,0 +1,592 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>LangGraph Introduction with a Finance Example</title>
+    <link rel="stylesheet" href="./slides.css" />
+  </head>
+  <body>
+    <main class="deck" aria-live="polite">
+      <section class="slide title active">
+        <p class="kicker">First-principles introduction for agent builders</p>
+        <h1>LangGraph Introduction with a Finance Example</h1>
+        <p class="subtitle">
+          Learn the core LangGraph building blocks first, then see how they turn an investor prompt into market comps,
+          scenario math, cap table impact, and an auditable execution trace.
+        </p>
+        <div class="agenda">
+          <span>LangGraph basics</span>
+          <span>Finance state</span>
+          <span>Nodes + edges</span>
+          <span>Traceable execution</span>
+          <span>Investor UI</span>
+        </div>
+      </section>
+
+      <section class="slide teach-slide">
+        <p class="kicker">LangGraph basics</p>
+        <h2>What is LangGraph?</h2>
+        <div class="teach-grid">
+          <div class="simple-diagram langgraph-overview" aria-label="Prompt moves through graph nodes into a result">
+            <div class="diagram-node start-node">Input</div>
+            <div class="diagram-arrow">→</div>
+            <div class="diagram-node">Node</div>
+            <div class="diagram-arrow">→</div>
+            <div class="diagram-node">Node</div>
+            <div class="diagram-arrow">→</div>
+            <div class="diagram-node end-node">Result</div>
+          </div>
+          <div class="teach-side">
+            <pre><code>from langgraph.graph import StateGraph
+
+graph = StateGraph(FinanceState)
+graph.add_node("parse_prompt", parse_prompt)
+graph.add_node("select_tickers", choose_tickers)
+graph.add_edge("parse_prompt", "select_tickers")</code></pre>
+            <p class="definition">LangGraph is a way to build agents as explicit workflows: named steps, connected paths, and shared state.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="slide teach-slide">
+        <p class="kicker">LangGraph basics</p>
+        <h2>What is a node?</h2>
+        <div class="teach-grid">
+          <div class="simple-diagram state-node-flow" aria-label="State in to node to state out">
+            <div class="diagram-node start-node">State in</div>
+            <div class="diagram-arrow">→</div>
+            <div class="diagram-node work-node">parse_prompt</div>
+            <div class="diagram-arrow">→</div>
+            <div class="diagram-node end-node">State out</div>
+          </div>
+          <div class="teach-side">
+            <pre><code>def parse_prompt(state):
+    state["assumptions"] = normalize_inputs(state)
+    return state
+
+graph.add_node("parse_prompt", parse_prompt)</code></pre>
+            <p class="definition">A node is one named unit of work.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="slide teach-slide">
+        <p class="kicker">LangGraph basics</p>
+        <h2>What kinds of work can go inside a node?</h2>
+        <div class="teach-grid">
+          <div class="simple-diagram node-work-grid" aria-label="Node work examples">
+            <div class="mini-task">Parse a prompt</div>
+            <div class="mini-task">Call a tool</div>
+            <div class="mini-task">Run math</div>
+            <div class="mini-task">Ask an LLM</div>
+            <div class="mini-task">Review risk</div>
+            <div class="mini-task">Write output</div>
+          </div>
+          <div class="teach-side">
+            <pre><code>def load_market_data(state):
+    quotes, source = fetch_quotes(state["tickers"])
+    state["quotes"] = quotes
+    state["dataSource"] = source
+    return state
+
+graph.add_node("yahoo_finance", load_market_data)</code></pre>
+            <p class="definition">A node can run normal code, call tools, ask a model, or apply business rules.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="slide teach-slide">
+        <p class="kicker">LangGraph basics</p>
+        <h2>What is an edge?</h2>
+        <div class="teach-grid">
+          <div class="simple-diagram edge-flow" aria-label="Node A points to Node B">
+            <div class="diagram-node">parse_prompt</div>
+            <div class="diagram-arrow">→</div>
+            <div class="diagram-node">select_tickers</div>
+          </div>
+          <div class="teach-side">
+            <pre><code>graph.add_node("parse_prompt", parse_prompt)
+graph.add_node("select_tickers", choose_tickers)
+
+graph.add_edge(
+    "parse_prompt",
+    "select_tickers",
+)</code></pre>
+            <p class="definition">An edge says what runs next.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="slide teach-slide">
+        <p class="kicker">LangGraph basics</p>
+        <h2>What is a conditional edge?</h2>
+        <div class="teach-grid">
+          <div class="simple-diagram conditional-flow" aria-label="Confidence check routes to cache or live data">
+            <div class="diagram-node work-node">Check confidence</div>
+            <div class="branch-row">
+              <div class="branch-path"><span>high</span><b>→</b><div class="diagram-node">Live data</div></div>
+              <div class="branch-path"><span>low</span><b>→</b><div class="diagram-node alt-node">Cached data</div></div>
+            </div>
+          </div>
+          <div class="teach-side">
+            <pre><code>graph.add_conditional_edges(
+    "check_confidence",
+    route_data_source,
+    {"live": "yahoo_finance",
+     "cache": "cached_quotes"},
+)</code></pre>
+            <p class="definition">A conditional edge chooses the next node based on state.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="slide teach-slide">
+        <p class="kicker">LangGraph basics</p>
+        <h2>How nodes compose into a graph</h2>
+        <div class="teach-grid">
+          <div class="simple-diagram compose-flow" aria-label="Finance nodes compose into a graph">
+            <div class="diagram-node">Prompt</div>
+            <div class="diagram-arrow">→</div>
+            <div class="diagram-node">Comps</div>
+            <div class="diagram-arrow">→</div>
+            <div class="diagram-node">Quotes</div>
+            <div class="diagram-arrow">→</div>
+            <div class="diagram-node">Cap table</div>
+            <div class="diagram-arrow">→</div>
+            <div class="diagram-node end-node">Summary</div>
+          </div>
+          <div class="teach-side">
+            <pre><code>graph.set_entry_point("parse_prompt")
+graph.add_edge("parse_prompt", "select_tickers")
+graph.add_edge("select_tickers", "yahoo_finance")
+graph.add_edge("yahoo_finance", "cap_table")
+graph.add_edge("cap_table", END)
+
+finance_graph = graph.compile()</code></pre>
+            <p class="definition">A graph is the whole workflow: nodes plus the paths between them.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="slide teach-slide">
+        <p class="kicker">LangGraph basics</p>
+        <h2>Example graph configurations</h2>
+        <div class="teach-grid">
+          <div class="simple-diagram config-grid" aria-label="Linear branching fallback and human review graphs">
+            <article><strong>Linear</strong><span>A → B → C</span></article>
+            <article><strong>Branching</strong><span>A → B or C</span></article>
+            <article><strong>Tool fallback</strong><span>Live → Cache</span></article>
+            <article><strong>Human review</strong><span>Risk → Approve</span></article>
+          </div>
+          <div class="teach-side">
+            <pre><code>def route_risk(state):
+    if state["valuation_change"] > 25:
+        return "human_review"
+    return "summary"
+
+graph.add_conditional_edges(
+    "risk_check",
+    route_risk,
+)</code></pre>
+            <p class="definition">Graph shape follows the operating process you want the agent to obey.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="slide teach-slide">
+        <p class="kicker">LangGraph basics</p>
+        <h2>What is graph state?</h2>
+        <div class="teach-grid">
+          <div class="simple-diagram state-table" aria-label="FinanceState fields">
+            <div><strong>prompt</strong><span>investor ask</span></div>
+            <div><strong>tickers</strong><span>public comps</span></div>
+            <div><strong>quotes</strong><span>market data</span></div>
+            <div><strong>scenarios</strong><span>model outputs</span></div>
+            <div><strong>summary</strong><span>takeaway</span></div>
+            <div><strong>trace</strong><span>audit trail</span></div>
+          </div>
+          <div class="teach-side">
+            <pre><code>class FinanceState(TypedDict, total=False):
+    prompt: str
+    assumptions: dict
+    tickers: list[str]
+    quotes: list[dict]
+    scenarios: list[dict]
+    summary: str</code></pre>
+            <p class="definition">State is the shared working memory passed through the graph.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="slide teach-slide">
+        <p class="kicker">LangGraph basics</p>
+        <h2>How state changes as it passes through nodes</h2>
+        <div class="teach-grid">
+          <div class="simple-diagram state-evolution" aria-label="State fields become populated over time">
+            <div class="state-column"><strong>Start</strong><span class="filled">prompt</span><span>tickers</span><span>quotes</span><span>summary</span></div>
+            <div class="diagram-arrow">→</div>
+            <div class="state-column"><strong>Middle</strong><span class="filled">prompt</span><span class="filled">tickers</span><span class="filled">quotes</span><span>summary</span></div>
+            <div class="diagram-arrow">→</div>
+            <div class="state-column"><strong>End</strong><span class="filled">prompt</span><span class="filled">tickers</span><span class="filled">quotes</span><span class="filled">summary</span></div>
+          </div>
+          <div class="teach-side">
+            <pre><code>state = {"prompt": user_prompt}
+
+state = parse_prompt(state)
+state = choose_tickers(state)
+state = load_market_data(state)
+state = summarize(state)</code></pre>
+            <p class="definition">Each node receives the current state, adds its work, and passes the updated state forward.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="slide">
+        <p class="kicker">Audience frame</p>
+        <h2>Investors do not just need a chatbot</h2>
+        <div class="two-col">
+          <div>
+            <p>
+              Finance agents need durable steps: parse the ask, choose data sources, fetch or fall back, calculate,
+              summarize, and show what happened. LangGraph makes that workflow explicit.
+            </p>
+            <p>
+              This demo uses a cap table stress-test because it has the shape real investors care about: market signal,
+              assumptions, deterministic math, and a decision-ready output.
+            </p>
+          </div>
+          <ul class="clean-list">
+            <li>Every node has one job.</li>
+            <li>State carries facts between nodes.</li>
+            <li>Tools are isolated from valuation logic.</li>
+            <li>The UI streams progress for auditability.</li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="slide finance-primer">
+        <p class="kicker">Finance primer</p>
+        <h2>The terms this demo is calculating</h2>
+        <div class="glossary-grid">
+          <article class="term-card highlight">
+            <strong>Post-money valuation</strong>
+            <span>What the company is worth immediately after the new investment.</span>
+            <em>Pre-money valuation + new money invested</em>
+          </article>
+          <article class="term-card">
+            <strong>Pre-money valuation</strong>
+            <span>What the company is worth before the new round comes in.</span>
+          </article>
+          <article class="term-card">
+            <strong>Dilution</strong>
+            <span>Existing owners' percentage goes down because new shares are issued.</span>
+          </article>
+          <article class="term-card">
+            <strong>Cap table</strong>
+            <span>The ownership map: founders, employees, investors, and option pool.</span>
+          </article>
+          <article class="term-card">
+            <strong>Option pool</strong>
+            <span>Shares reserved for hiring and retaining employees.</span>
+          </article>
+          <article class="term-card">
+            <strong>Liquidation preference</strong>
+            <span>A downside protection rule for investors before common shareholders get paid.</span>
+          </article>
+        </div>
+        <p class="plain-note">
+          In this demo, public-market shocks change the implied valuation. The graph then shows how that changes ownership,
+          dilution, and investor proceeds.
+        </p>
+      </section>
+
+      <section class="slide">
+        <p class="kicker">Graph mental model</p>
+        <h2>A finance agent is a workflow, not one prompt</h2>
+        <div class="architecture-map">
+          <div class="actor-card">Investor prompt</div>
+          <div class="node-chain">
+            <span>Parse</span>
+            <span>Comps</span>
+            <span>Quotes</span>
+            <span>Scenarios</span>
+            <span>Cap table</span>
+            <span>Summary</span>
+          </div>
+          <div class="actor-card">Decision dashboard</div>
+        </div>
+        <p class="note">
+          Each box is a Python function. LangGraph controls the order, passes shared state, and gives us a clean place
+          to add branches later: approvals, human review, alternate data vendors, or memo generation.
+        </p>
+      </section>
+
+      <section class="slide code-slide">
+        <p class="kicker">Step 1: define shared state</p>
+        <h2>The graph state is the agent's working memory</h2>
+        <div class="code-grid">
+          <pre><code>class FinanceState(TypedDict, total=False):
+    prompt: str
+    assumptions: dict
+    tickers: list[str]
+    quotes: list[dict]
+    dataSource: str
+    marketBeta: float
+    scenarios: list[dict]
+    summary: str
+    trace: list[dict]</code></pre>
+          <div class="visual-panel state-visual">
+            <div class="memory-core">FinanceState</div>
+            <div class="state-card prompt">Prompt<br /><small>investor ask</small></div>
+            <div class="state-card market">Market<br /><small>tickers + quotes</small></div>
+            <div class="state-card model">Model<br /><small>scenarios</small></div>
+            <div class="state-card output">Output<br /><small>summary + trace</small></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="slide">
+        <p class="kicker">State before and after</p>
+        <h2>The declaration becomes a populated deal file</h2>
+        <div class="state-before-after">
+          <article class="state-snapshot empty">
+            <strong>Before the graph runs</strong>
+            <div class="state-list">
+              <span class="filled">prompt</span>
+              <span class="filled">assumptions</span>
+              <span>tickers</span>
+              <span>quotes</span>
+              <span>marketBeta</span>
+              <span>scenarios</span>
+              <span>summary</span>
+              <span>trace</span>
+            </div>
+          </article>
+          <div class="state-arrow">→</div>
+          <article class="state-snapshot populated">
+            <strong>After nodes populate it</strong>
+            <div class="state-list">
+              <span class="filled">prompt: Series B stress-test</span>
+              <span class="filled">assumptions: $35M raise</span>
+              <span class="filled">tickers: NVDA, AMD, MSFT</span>
+              <span class="filled">quotes: live/cached comps</span>
+              <span class="filled">marketBeta: scenario sensitivity</span>
+              <span class="filled">scenarios: 4 cap table cases</span>
+              <span class="filled">summary: investor takeaway</span>
+              <span class="filled">trace: node audit trail</span>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section class="slide code-slide">
+        <p class="kicker">Step 2: write small node functions</p>
+        <h2>Each node reads state, writes state, returns state</h2>
+        <div class="code-grid">
+          <pre><code>def choose_tickers(state: FinanceState) -> FinanceState:
+    state["tickers"] = select_tickers(state["prompt"])
+    return _trace(
+        state,
+        "select_tickers",
+        f"Selected comps: {', '.join(state['tickers'])}",
+    )
+
+def load_market_data(state: FinanceState) -> FinanceState:
+    quotes, source = fetch_quotes(state["tickers"])
+    state["quotes"] = quotes
+    state["dataSource"] = source
+    return _trace(state, "yahoo_finance", "Loaded quotes")</code></pre>
+          <div class="visual-panel node-visual">
+            <div class="node-box input">Read state</div>
+            <div class="arrow-down">↓</div>
+            <div class="node-box work">Do one finance job</div>
+            <div class="arrow-down">↓</div>
+            <div class="node-box output">Write state</div>
+            <div class="caption-card">
+              No UI. No charting. No hidden valuation magic. Just a testable business step.
+            </div>
+          </div>
+        </div>
+      </section>
+
+
+      <section class="slide code-slide">
+        <p class="kicker">Step 3: compile the graph</p>
+        <h2>LangGraph wires the finance workflow</h2>
+        <div class="code-grid">
+          <pre><code>graph = StateGraph(FinanceState)
+graph.add_node("parse_prompt", parse_prompt)
+graph.add_node("select_tickers", choose_tickers)
+graph.add_node("yahoo_finance", load_market_data)
+graph.add_node("market_shocks", model_scenarios)
+graph.add_node("cap_table", run_cap_table_node)
+graph.add_node("investor_summary", summarize)
+
+graph.set_entry_point("parse_prompt")
+graph.add_edge("parse_prompt", "select_tickers")
+graph.add_edge("select_tickers", "yahoo_finance")
+graph.add_edge("yahoo_finance", "market_shocks")
+graph.add_edge("market_shocks", "cap_table")
+graph.add_edge("cap_table", "investor_summary")</code></pre>
+          <div class="visual-panel wiring-visual">
+            <div class="wire-row"><span>parse_prompt</span><b>→</b><span>select_tickers</span></div>
+            <div class="wire-row"><span>select_tickers</span><b>→</b><span>yahoo_finance</span></div>
+            <div class="wire-row"><span>yahoo_finance</span><b>→</b><span>market_shocks</span></div>
+            <div class="wire-row"><span>market_shocks</span><b>→</b><span>cap_table</span></div>
+            <div class="wire-row"><span>cap_table</span><b>→</b><span>summary</span></div>
+            <div class="caption-card">Edges are the operating model. Branches can be added where business policy changes.</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="slide code-slide">
+        <p class="kicker">Step 4: isolate market data tools</p>
+        <h2>Live Yahoo Finance, deterministic fallback</h2>
+        <div class="code-grid">
+          <pre><code>def fetch_quotes(tickers: list[str]) -> tuple[list[dict], str]:
+    try:
+        import yfinance as yf
+        quotes = []
+        for ticker in tickers:
+            info = yf.Ticker(ticker).fast_info
+            quotes.append(normalize_quote(ticker, info))
+        return quotes, "live"
+    except Exception:
+        return cached_quotes(tickers), "cached"</code></pre>
+          <div class="visual-panel tool-visual">
+            <div class="ticker-strip"><span>NVDA</span><span>AMD</span><span>MSFT</span></div>
+            <div class="split-path">
+              <div>
+                <strong>Live path</strong>
+                <p>Yahoo Finance via `yfinance`</p>
+              </div>
+              <div>
+                <strong>Fallback path</strong>
+                <p>Cached sample comps</p>
+              </div>
+            </div>
+            <div class="caption-card">The graph records `dataSource`, so the investor knows which path produced the analysis.</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="slide code-slide">
+        <p class="kicker">Step 5: keep finance math deterministic</p>
+        <h2>The LLM should not improvise cap table math</h2>
+        <div class="code-grid">
+          <pre><code>def run_cap_table(inputs, market_shock_pct):
+    shocked_price = inputs.current_share_price * (
+        1 + market_shock_pct / 100
+    )
+    pre_money_m = shocked_price * inputs.existing_shares_m
+    discounted_pre_m = pre_money_m * (
+        1 - inputs.valuation_discount_pct / 100
+    )
+    post_money_m = discounted_pre_m + inputs.raise_amount_m
+    investor_pct = inputs.raise_amount_m / post_money_m * 100
+    return {"postMoneyM": post_money_m,
+            "investorOwnershipPct": investor_pct}</code></pre>
+          <div class="visual-panel math-visual">
+            <div class="math-step">Market shock</div>
+            <div class="math-op">×</div>
+            <div class="math-step">Share price</div>
+            <div class="math-op">=</div>
+            <div class="math-step strong">Pre-money</div>
+            <div class="math-step">Raise amount</div>
+            <div class="math-op">÷</div>
+            <div class="math-step">Post-money</div>
+            <div class="math-op">=</div>
+            <div class="math-step strong">Investor %</div>
+            <div class="caption-card">The agent orchestrates. Deterministic functions calculate.</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="slide code-slide">
+        <p class="kicker">Step 6: stream the graph trace</p>
+        <h2>Show investors how the agent got there</h2>
+        <div class="code-grid">
+          <pre><code>@app.post("/analyze/stream")
+async def analyze_stream(request):
+    for update in finance_graph.stream(initial_state):
+        node, state = next(iter(update.items()))
+        trace_item = state["trace"][-1]
+        yield sse({
+            "type": "trace",
+            "node": node,
+            "trace": trace_item,
+        })
+    yield sse({"type": "result", "result": state})</code></pre>
+          <div class="visual-panel trace-visual">
+            <div class="event-card done">parse_prompt complete</div>
+            <div class="event-card done">select_tickers complete</div>
+            <div class="event-card live">yahoo_finance running</div>
+            <div class="event-card muted">cap_table waiting</div>
+            <div class="caption-card">Trace events become the visible audit trail in the dashboard.</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="slide image-slide">
+        <p class="kicker">Investor-facing surface</p>
+        <h2>The dashboard maps graph state to decisions</h2>
+        <img src="./assets/completed-results.png" alt="Completed cap table stress-test dashboard" />
+      </section>
+
+      <section class="slide image-slide">
+        <p class="kicker">Trace visibility</p>
+        <h2>The audience sees the graph execute</h2>
+        <img src="./assets/running-trace.png" alt="LangGraph trace running screenshot" />
+      </section>
+
+      <section class="slide video-slide">
+        <p class="kicker">Verification</p>
+        <h2>Prompt, run, result, rerun</h2>
+        <video src="./assets/verification.mp4" controls muted playsinline></video>
+      </section>
+
+      <section class="slide">
+        <p class="kicker">How to extend this for real funds</p>
+        <h2>Where builders take it next</h2>
+        <div class="data-grid">
+          <article>
+            <strong>Branching</strong>
+            <span>Add human review when confidence is low or a valuation threshold is crossed.</span>
+          </article>
+          <article>
+            <strong>Tools</strong>
+            <span>Swap Yahoo Finance for CapIQ, PitchBook, internal KPIs, or portfolio reporting.</span>
+          </article>
+          <article>
+            <strong>Memory</strong>
+            <span>Persist assumptions by deal, partner, investment committee, and portfolio company.</span>
+          </article>
+          <article>
+            <strong>Outputs</strong>
+            <span>Generate memo sections, IC slides, model exports, and diligence checklists.</span>
+          </article>
+        </div>
+      </section>
+
+      <section class="slide">
+        <p class="kicker">Takeaway</p>
+        <h2>LangGraph is the control plane for finance agents</h2>
+        <ul class="takeaways">
+          <li>Use graph state for facts the workflow must preserve.</li>
+          <li>Use nodes for testable business steps.</li>
+          <li>Use tools for external data and keep fallbacks explicit.</li>
+          <li>Use deterministic functions for financial calculations.</li>
+          <li>Use streaming traces so investors can trust the path, not just the answer.</li>
+        </ul>
+        <p class="disclaimer">Demo for education only. Not investment, legal, tax, or accounting advice.</p>
+      </section>
+    </main>
+    <nav class="controls" aria-label="Slide controls">
+      <button id="prev" aria-label="Previous slide">←</button>
+      <span id="counter"></span>
+      <button id="next" aria-label="Next slide">→</button>
+    </nav>
+    <script src="./slides.js"></script>
+  </body>
+</html>

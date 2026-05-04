@@ -1,0 +1,43 @@
+{
+  "name": "langgraph-finance-demo",
+  "version": "1.0.0",
+  "description": "Workshop demo for a LangGraph-powered finance cap table stress-test dashboard.",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/cyne-wulf/langgraph-finance-demo.git"
+  },
+  "bugs": {
+    "url": "https://github.com/cyne-wulf/langgraph-finance-demo/issues"
+  },
+  "homepage": "https://github.com/cyne-wulf/langgraph-finance-demo#readme",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "vite build",
+    "preview": "vite preview --host 127.0.0.1",
+    "test:frontend": "vitest run",
+    "test:backend": "PYTHONPATH=backend python -m pytest backend/tests",
+    "test": "npm run test:frontend && npm run test:backend"
+  },
+  "dependencies": {
+    "@vitejs/plugin-react": "^4.3.4",
+    "lucide-react": "^0.468.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "recharts": "^2.15.0",
+    "typescript": "^5.7.2",
+    "vite": "^6.0.7"
+  },
+  "devDependencies": {
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.1.0",
+    "jsdom": "^25.0.1",
+    "playwright": "^1.49.1",
+    "vitest": "^3.2.4"
+  }
+}
